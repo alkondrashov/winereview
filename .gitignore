@@ -1,0 +1,8 @@
+.project
+.classpath
+target/
+.settings
+
+.RData
+.RHistory
+winereview-model/output
