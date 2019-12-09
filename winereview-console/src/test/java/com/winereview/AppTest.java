@@ -1,4 +1,4 @@
-package com.winereview.app;
+package com.winereview;
 
 import static org.junit.Assert.assertTrue;
 
