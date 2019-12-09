@@ -6,3 +6,5 @@ target/
 .RData
 .RHistory
 output/
+
+settings.json
