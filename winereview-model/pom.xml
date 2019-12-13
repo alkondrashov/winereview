@@ -19,6 +19,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
+    <r.artifact.file>${project.build.directory}/${project.artifactId}_${project.version.r}.tar.gz</r.artifact.file>
+    <r.module.output.directory>${project.build.directory}/${project.artifactId}-${project.version}</r.module.output.directory>
   </properties>
 
   <dependencies>
@@ -34,44 +36,126 @@
     <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
       <plugins>
         <!-- clean lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->
-        <plugin>
-          <artifactId>maven-clean-plugin</artifactId>
-          <version>3.1.0</version>
-        </plugin>
+
         <!-- default lifecycle, jar packaging: see https://maven.apache.org/ref/current/maven-core/default-bindings.html#Plugin_bindings_for_jar_packaging -->
         <plugin>
           <artifactId>maven-resources-plugin</artifactId>
           <version>3.0.2</version>
+
+          <configuration>
+          <encoding>${project.build.sourceEncoding}</encoding>
+        </configuration>
+        <!-- Copy the code from the source directory to a target directory. -->
+        <executions>
+          <execution>
+            <id>copy-r-code</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${r.module.output.directory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.basedir}/src/main/R/${project.artifactId}</directory>
+                  <filtering>false</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
         </plugin>
-        <plugin>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.8.0</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.22.1</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-jar-plugin</artifactId>
-          <version>3.0.2</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-install-plugin</artifactId>
-          <version>2.5.2</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-deploy-plugin</artifactId>
-          <version>2.8.2</version>
-        </plugin>
-        <!-- site lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#site_Lifecycle -->
-        <plugin>
-          <artifactId>maven-site-plugin</artifactId>
-          <version>3.7.1</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-project-info-reports-plugin</artifactId>
-          <version>3.0.0</version>
-        </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <!-- Create a variable with the R-formatted version number. -->
+          <execution>
+            <id>regex-property</id>
+            <goals>
+              <goal>regex-property</goal>
+            </goals>
+            <configuration>
+              <name>project.version.r</name>
+              <value>${project.version}</value>
+              <regex>-SNAPSHOT</regex>
+              <replacement>.9000</replacement>
+              <failIfNoMatch>false</failIfNoMatch>
+
+            </configuration>
+          </execution>
+          <!-- Include the packaged .tar.gz with the R module as an artifact. -->
+          <execution>
+            <id>attach-artifacts</id>
+            <phase>package</phase>
+            <goals>
+              <goal>attach-artifact</goal>
+            </goals>
+            <configuration>
+              <artifacts>
+                <artifact>
+                  <file>${r.artifact.file}</file>
+                  <type>tar.gz</type>
+                </artifact>
+              </artifacts>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.5.0</version>
+        <configuration>
+          <environmentVariables>
+            <R_LIBS>${user.home}/.R/library</R_LIBS>
+            <R_REPOS>http://cran.rstudio.com/</R_REPOS>
+          </environmentVariables>
+        </configuration>
+        <executions>
+          <!-- Create the documentation. -->
+          <execution>
+            <id>exec-r-document</id>
+            <phase>generate-resources</phase>
+            <configuration>
+              <workingDirectory>${r.module.output.directory}</workingDirectory>
+              <executable>R</executable>
+              <arguments>
+                <argument>-e</argument>
+                <argument>devtools::document()</argument>
+              </arguments>
+              <failOnError>true</failOnError>
+              <failOnViolation>true</failOnViolation>
+            </configuration>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            
+          </execution>
+          <!-- Build the R module. -->
+          <execution>
+            <id>exec-r-build</id>
+            <phase>compile</phase>
+            <configuration>
+              <workingDirectory>${project.build.directory}</workingDirectory>
+              <executable>R</executable>
+              <arguments>
+                <argument>CMD</argument>
+                <argument>build</argument>
+                <argument>--md5</argument>
+                <argument>${r.module.output.directory}</argument>
+              </arguments>
+              <failOnError>true</failOnError>
+              <failOnViolation>true</failOnViolation>
+            </configuration>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
       </plugins>
     </pluginManagement>
   </build>
